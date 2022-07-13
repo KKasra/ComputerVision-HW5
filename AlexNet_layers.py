@@ -1,43 +1,65 @@
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+import numpy as np
 
 def get_AlexNet_weights() :
     return np.load(open("tf_weights/bvlc_alexnet.npy", "rb"), 
                    encoding="latin1", allow_pickle=True).item()
 
+def split_weights(weights):
+    n = weights[1].shape[0] // 2
+    return [[weights[0][:,:,:,:n], weights[1][:n]], [weights[0][:,:,:,n:], weights[1][n:]]]
+def get_weight_layer_mapping():
+    weight_layer_map = dict()
 
+    weight_layer_map['conv1'] = [2, 3]
+    weight_layer_map['conv2'] = [6, 7]
+    weight_layer_map['conv3'] = [10, 11]
+    weight_layer_map['conv4'] = [12, 13]
+    weight_layer_map['conv5'] = [14, 15]
+    weight_layer_map['fc6'] = [19]
+    weight_layer_map['fc7'] = [20]
 
-def get_AlexNet_layers():
-    conv1 = keras.layers.Conv2D(96, (11,11),strides=4, activation='relu')
-    maxp1 = keras.layers.MaxPool2D( pool_size=(3, 3),strides=2)
+    return weight_layer_map
 
-    conv2 = keras.layers.Conv2D(256, (5,5),strides=1, activation='relu', padding='same')
-    maxp2 = keras.layers.MaxPool2D(pool_size=(3,3), strides=2)
-
-    conv3 = keras.layers.Conv2D(384, (3,3), padding='same', activation='relu')
-
-    conv4 = keras.layers.Conv2D(384, (3,3), padding='same', activation='relu')
-
-    conv5 = keras.layers.Conv2D(256, (3,3), padding='same', activation='relu')
-    maxp5 = keras.layers.MaxPool2D(pool_size=(3,3), strides=2)
-
-    fc6 = keras.layers.Dense(4096, activation='relu')
-
-    fc7 =  keras.layers.Dense(4096, activation='relu')
+def get_AlexNet_model():
+    model_input = keras.Input(shape=(227,227,3))
+    model_output = keras.layers.Rescaling(1/1.)(model_input)
     
-    fc8 = keras.layers.Dense(1000, activation='relu')
+    out1 = keras.layers.Conv2D(48, (11,11),strides=4, activation='relu')(model_output)
+    out2 = keras.layers.Conv2D(48, (11,11),strides=4, activation='relu')(model_output)
     
-    result = dict()
-    result['conv1'] = conv1
-    result['maxp1'] = maxp1
-    result['conv2'] = conv2
-    result['maxp2'] = maxp2
-    result['conv3'] = conv3
-    result['conv4'] = conv4
-    result['conv5'] = conv5
-    result['maxp5'] = maxp5
-    result['fc6'] = fc6
-    result['fc7'] = fc7
-    result['fc8'] = fc8
-    return result
+    out1 = keras.layers.MaxPool2D(pool_size=(3, 3),strides=2)(out1)
+    out2 = keras.layers.MaxPool2D(pool_size=(3, 3),strides=2)(out2)
+    
+
+    out1 = keras.layers.Conv2D(128, (5,5),strides=1, activation='relu', padding='same')(out1)
+    out2 = keras.layers.Conv2D(128, (5,5),strides=1, activation='relu', padding='same')(out2)
+
+    model_output = keras.layers.concatenate([out1, out2], axis=-1)
+    model_output = keras.layers.MaxPool2D(pool_size=(3,3), strides=2)(model_output)
+
+    out1 = keras.layers.Conv2D(192, (3,3), padding='same', activation='relu')(model_output)
+    out2 = keras.layers.Conv2D(192, (3,3), padding='same', activation='relu')(model_output)
+
+    out1 = keras.layers.Conv2D(192, (3,3), padding='same', activation='relu')(out1)
+    out2 = keras.layers.Conv2D(192, (3,3), padding='same', activation='relu')(out2)
+
+    out1 = keras.layers.Conv2D(128, (3,3), padding='same', activation='relu')(out1)
+    out2 = keras.layers.Conv2D(128, (3,3), padding='same', activation='relu')(out2)
+
+
+    model_output = keras.layers.concatenate([out1, out2], axis = -1)
+
+    model_output = keras.layers.MaxPool2D(pool_size=(3,3), strides=2)(model_output)
+
+    model_output = keras.layers.Flatten()(model_output)
+ 
+    model_output = keras.layers.Dense(4096, activation='relu')(model_output)
+
+    model_output = keras.layers.Dense(4096, activation='relu')(model_output)
+
+    model = keras.Model(model_input, model_output)
+
+    return model
