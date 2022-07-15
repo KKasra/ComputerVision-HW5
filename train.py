@@ -9,7 +9,7 @@ from Dataset_loading import get_generator
 from Logging import Logger
 
 def train_model(model_builder, epochs = 10, optimizer='adam', 
-					workers=1, multiprocessing_flag=False,generators=get_generator(), weights = None):
+					workers=1, multiprocessing_flag=False,generators=get_generator, weights = None):
     model = model_builder()
 
     
@@ -21,9 +21,28 @@ def train_model(model_builder, epochs = 10, optimizer='adam',
     if weights is not None:
         model.load_weights(weights)
 
+    
+
+    train_ds, test_ds = generators()
+
+    
+
+    if weights is not None:
+        history = model.fit(
+		train_ds,
+		validation_data=test_ds,
+		epochs=1,
+		workers=workers,
+		use_multiprocessing=multiprocessing_flag
+		)
+        model.load_weights(weights)
+        for l in model.layers:
+            l.trainable = True
+        print(len(model.trainable_variables))
+        
+
     model.summary()
 
-    train_ds, test_ds = generators
     history = model.fit(
       train_ds,
       validation_data=test_ds,
@@ -50,14 +69,16 @@ def train_model(model_builder, epochs = 10, optimizer='adam',
     a[0].plot(epochs_range, acc, label='Training Accuracy')
     a[0].plot(epochs_range, val_acc, label='Validation Accuracy')
     a[0].legend()
+    a[0].grid()
     
     a[1].plot(epochs_range, acc5, label='Training Top-5 Accuracy')
     a[1].plot(epochs_range, val_acc5, label='Validation Top-5 Accuracy')
     a[1].legend()
-    
+    a[1].grid()
     a[2].plot(epochs_range, loss, label='Training Loss')
     a[2].plot(epochs_range, val_loss, label='Validation Loss')
     a[2].legend()
+    a[2].grid()
     plt.savefig('tmp.jpg')
 
     return model, [acc[-1], val_acc[-1], acc5[-1], val_acc5[-1], loss[-1], val_loss[-1]]
@@ -71,13 +92,13 @@ def save_trained_model(model, history, part, logger):
 	model.save_weights(file_path)
 
 
-logger = Logger()
+# logger = Logger()
 
 # get_Q4_model().summary()
 
-model, history = train_model(get_Q1_model, 
-							optimizer=tf.optimizers.SGD(learning_rate = .002, momentum=.5),
-							epochs=20, 
-							generators=get_generator(batch_size=64, augmentation=True))
+# model, history = train_model(get_Q4_model, 
+# 							optimizer=tf.optimizers.SGD(learning_rate = .002, momentum=.5),
+# 							epochs=20, 
+# 							generators=get_generator(batch_size=64, augmentation=True))
 
-save_trained_model(model, history, 1, logger)
+# save_trained_model(model, history, 1, logger)
