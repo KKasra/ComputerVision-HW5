@@ -4,27 +4,16 @@ import numpy as np
 img_height = 227
 img_width = 227
 
-def normalize_batch(batch):
-    return keras.layers.Normalization()(batch)
+normalize_batch = keras.layers.Normalization()
 
-def data_augmentation(batch):
-    model = keras.Sequential(
+data_augmentation = keras.Sequential(
   [
     keras.layers.RandomFlip("horizontal"),
-    keras.layers.RandomRotation(.1),
-    keras.layers.RandomZoom((-.2,0.2)),
-    # keras.layers.RandomCrop(img_height,img_width)
+    keras.layers.RandomRotation(.2),
+    keras.layers.RandomZoom(1),
+    keras.layers.RandomCrop(img_height,img_width)
   ]
     )
-    x,y = np.random.uniform(low=0, high=1, size=(2,))
-
-    x *= batch.shape[1] - img_height
-    y *= batch.shape[2] - img_width
-
-    x = int(x)
-    y = int(y)
-    return model(batch)
-    # return model(batch)[:,x:x+img_height,y:y + img_width,:]
 
 def get_generator(batch_size=30, augmentation=True):
     
@@ -40,7 +29,10 @@ def get_generator(batch_size=30, augmentation=True):
         image_size=(img_height, img_width),
         batch_size=batch_size)
 
-    train_ds.map(lambda x,y : (normalize_batch(data_augmentation(x)), y))
+    if augmentation:
+        train_ds.map(lambda x,y : (normalize_batch(data_augmentation(x)), y))
+    else:
+        train_ds.map(lambda x,y : (normalize_batch(x), y))
     test_ds.map(lambda x,y : (normalize_batch(x), y))
 
     train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=tf.data.AUTOTUNE)
